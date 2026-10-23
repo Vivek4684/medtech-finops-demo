@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MedTech Data Platform — FinOps Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#1f3864; --navy2:#2e5496; --blue:#3f7fd4; --sky:#6fa8e6;
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1b2a4a; --muted:#6b7a99;
+    --line:#e3e8f2; --good:#2e9e6b; --warn:#d98a2b;
+    --sc:#2e5496; --co:#3f9e8c; --rd:#9b5bb0; --en:#c8792e; --other:#9aa7bf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);}
+  header{background:linear-gradient(110deg,var(--navy),var(--navy2));color:#fff;
+         padding:18px 28px;display:flex;align-items:center;justify-content:space-between;
+         box-shadow:0 2px 10px rgba(31,56,100,.25);position:sticky;top:0;z-index:20;}
+  header h1{font-size:19px;margin:0;font-weight:600;letter-spacing:.2px}
+  header .sub{font-size:12px;opacity:.85;margin-top:2px}
+  header .total{text-align:right}
+  header .total .n{font-size:24px;font-weight:700}
+  header .total .l{font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px}
+  .wrap{max-width:1280px;margin:0 auto;padding:20px 24px 60px}
+  .crumbs{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 16px}
+  .crumbs a{color:var(--navy2);cursor:pointer;text-decoration:none;font-weight:600}
+  .crumbs a:hover{text-decoration:underline}
+  .crumbs span.sep{opacity:.5}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+       box-shadow:0 1px 3px rgba(27,42,74,.05)}
+  .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .kpi .n{font-size:23px;font-weight:700;margin-top:6px}
+  .kpi .d{font-size:12px;color:var(--muted);margin-top:3px}
+  .kpi.accent{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border:none}
+  .kpi.accent .l,.kpi.accent .d{color:#dbe6fb}
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:1.3fr 1fr}
+  .g2b{grid-template-columns:1fr 1fr}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;
+        box-shadow:0 1px 3px rgba(27,42,74,.05)}
+  .card h3{margin:0 0 4px;font-size:15px;color:var(--navy)}
+  .card .hint{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .chartbox{position:relative;height:300px}
+  .chartbox.tall{height:360px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.clickable{cursor:pointer;transition:background .12s}
+  tr.clickable:hover{background:#eef3fb}
+  .bar{height:8px;border-radius:4px;background:var(--sky)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:#fff}
+  .tag.sc{background:var(--sc)} .tag.co{background:var(--co)} .tag.rd{background:var(--rd)}
+  .tag.en{background:var(--en)} .tag.other{background:var(--other)}
+  .pill{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .back{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;
+        cursor:pointer;color:var(--navy2);font-weight:600}
+  .back:hover{background:#eef3fb}
+  .section-title{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+  .section-title h2{font-size:15px;color:var(--navy);margin:0}
+  .mini{font-size:12px;color:var(--muted)}
+  .note{font-size:11px;color:var(--muted);margin-top:8px;font-style:italic}
+  .split{display:flex;gap:4px;height:14px;border-radius:7px;overflow:hidden;margin-top:8px}
+  .split > div{height:100%}
+  .foot{margin-top:28px;font-size:11px;color:var(--muted);text-align:center}
+  @media(max-width:900px){.kpis{grid-template-columns:1fr 1fr}.g2,.g2b{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>MedTech Data Platform — FinOps Dashboard</h1>
+    <div class="sub">Data platform technology spend across sectors &amp; projects · Dummy demo data</div>
+  </div>
+  <div class="total">
+    <div class="n" id="hdrTotal">$20.0M</div>
+    <div class="l">Total Annual Spend</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="crumbs" id="crumbs"></div>
+  <div id="view"></div>
+  <div class="foot">
+    Illustrative dummy data for solution demonstration · Figures reconcile to the ~$20M annual data-platform budget ·
+    Shared costs (licenses &amp; platform) are also allocated to sectors to show fully-loaded cost.
+  </div>
+</div>
+
+<script src="data/_embed.js"></script>
+<script>
+const D = FINOPS_DATA;
+const MONTHS = D.meta.months;
+const SECTORS = D.meta.sectors;
+
+// ---- colour helpers -------------------------------------------------------
+const SECTOR_COLOR = {"Supply Chain":"#2e5496","Commercial":"#3f9e8c","R&D":"#9b5bb0","Enterprise":"#c8792e"};
+const PALETTE = ["#1f3864","#2e5496","#3f7fd4","#3f9e8c","#9b5bb0","#c8792e","#6fa8e6",
+                 "#4bbf9a","#b57edd","#e0a85e","#8aa0c4","#d46a6a","#5fb0c9"];
+function sectorTagClass(s){
+  return {"Supply Chain":"sc","Commercial":"co","R&D":"rd","Enterprise":"en"}[s] || "other";
+}
+function money(n){
+  if(n>=1e6) return "$"+(n/1e6).toFixed(2)+"M";
+  if(n>=1e3) return "$"+(n/1e3).toFixed(0)+"K";
+  return "$"+Math.round(n);
+}
+function moneyFull(n){ return "$"+Math.round(n).toLocaleString("en-US"); }
+function pct(n,d){ return (100*n/d).toFixed(1)+"%"; }
+
+document.getElementById("hdrTotal").textContent = money(D.meta.total_spend);
+
+// ---- routing --------------------------------------------------------------
+let chartRegistry = [];
+function clearCharts(){ chartRegistry.forEach(c=>c.destroy()); chartRegistry=[]; }
+
+const routes = {home:renderHome, tech:renderTech, sector:renderSector, project:renderProject};
+function go(view, arg){
+  clearCharts();
+  location.hash = view==="home" ? "" : view+"/"+encodeURIComponent(arg);
+  routes[view](arg);
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange", routeFromHash);
+function routeFromHash(){
+  const h = location.hash.replace(/^#/,"");
+  if(!h){ clearCharts(); renderHome(); return; }
+  const [v,a] = h.split("/");
+  if(routes[v]){ clearCharts(); routes[v](decodeURIComponent(a||"")); }
+  else { clearCharts(); renderHome(); }
+}
+
+function crumbs(parts){
+  const el = document.getElementById("crumbs");
+  el.innerHTML = parts.map((p,i)=>{
+    const last = i===parts.length-1;
+    if(last) return `<span>${p.label}</span>`;
+    return `<a data-v="${p.v}" data-a="${p.a||''}">${p.label}</a><span class="sep">›</span>`;
+  }).join("");
+  el.querySelectorAll("a").forEach(a=>a.onclick=()=>go(a.dataset.v, a.dataset.a));
+}
+
+// ---- LEVEL 1: Enterprise home --------------------------------------------
+function renderHome(){
+  crumbs([{label:"Enterprise Overview"}]);
+  const m = D.meta;
+  const techEntries = Object.entries(D.technologies).sort((a,b)=>b[1].total-a[1].total);
+
+  const v = document.getElementById("view");
+  v.innerHTML = `
+    <div class="kpis">
+      <div class="kpi accent"><div class="l">Total Annual Spend</div><div class="n">${money(m.total_spend)}</div><div class="d">Across ${techEntries.length} platform line items</div></div>
+      <div class="kpi"><div class="l">Shared / Enterprise</div><div class="n">${money(m.shared_total)}</div><div class="d">${pct(m.shared_total,m.total_spend)} · licenses &amp; platform</div></div>
+      <div class="kpi"><div class="l">Sector-Attributed</div><div class="n">${money(m.attributable_total)}</div><div class="d">${pct(m.attributable_total,m.total_spend)} · direct consumption</div></div>
+      <div class="kpi"><div class="l">Sectors Tracked</div><div class="n">${SECTORS.length}</div><div class="d">Supply Chain · Commercial · R&amp;D · Enterprise</div></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>Spend by Technology</h3>
+        <p class="hint">Click a technology to see its spend split across the four sectors, then drill into projects.</p>
+        <div class="chartbox tall"><canvas id="techChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Fully-Loaded Cost by Sector</h3>
+        <p class="hint">Direct consumption + allocated share of the enterprise/shared pool. Click a sector to drill in.</p>
+        <div class="chartbox"><canvas id="sectorChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Technology Breakdown</h2><span class="mini">Click any row to drill down →</span></div>
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>Technology</th><th>Category</th>
+          <th class="num">Shared</th><th class="num">Sector-Attributed</th>
+          <th class="num">Total</th><th class="num">% of Spend</th><th></th>
+        </tr></thead>
+        <tbody id="techRows"></tbody>
+      </table>
+    </div>
+
+    <div class="grid g2b" style="margin-top:16px">
+      <div class="card">
+        <h3>Monthly Spend Trend</h3>
+        <p class="hint">All technologies combined · 12-month view.</p>
+        <div class="chartbox"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Shared vs. Attributable</h3>
+        <p class="hint">How much is a fixed enterprise commitment vs. driven by sector usage.</p>
+        <div class="chartbox"><canvas id="splitChart"></canvas></div>
+      </div>
+    </div>
+  `;
+
+  // tech bar chart
+  chartRegistry.push(new Chart(document.getElementById("techChart"),{
+    type:"bar",
+    data:{labels:techEntries.map(e=>e[0]),
+      datasets:[
+        {label:"Shared / Enterprise",data:techEntries.map(e=>e[1].shared),backgroundColor:"#9aa7bf"},
+        {label:"Sector-Attributed",data:techEntries.map(e=>e[1].attributable),backgroundColor:"#2e5496"}
+      ]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,ticks:{callback:v=>money(v)}},y:{stacked:true}},
+      plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.dataset.label+": "+moneyFull(c.raw)}}},
+      onClick:(e,els)=>{if(els.length)go("tech",techEntries[els[0].index][0]);}}
+  }));
+
+  // sector doughnut (fully loaded)
+  const secVals = SECTORS.map(s=>D.sectors[s].fully_loaded);
+  chartRegistry.push(new Chart(document.getElementById("sectorChart"),{
+    type:"doughnut",
+    data:{labels:SECTORS,datasets:[{data:secVals,backgroundColor:SECTORS.map(s=>SECTOR_COLOR[s])}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"55%",
+      plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.label+": "+moneyFull(c.raw)+" ("+pct(c.raw,m.total_spend)+")"}}},
+      onClick:(e,els)=>{if(els.length)go("sector",SECTORS[els[0].index]);}}
+  }));
+
+  // trend
+  chartRegistry.push(new Chart(document.getElementById("trendChart"),{
+    type:"line",
+    data:{labels:MONTHS,datasets:[{label:"Monthly Spend",data:D.monthly_total,
+      borderColor:"#2e5496",backgroundColor:"rgba(46,84,150,.12)",fill:true,tension:.3,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{ticks:{callback:v=>money(v)}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>moneyFull(c.raw)}}}}
+  }));
+
+  // split
+  chartRegistry.push(new Chart(document.getElementById("splitChart"),{
+    type:"doughnut",
+    data:{labels:["Shared / Enterprise","Sector-Attributed"],
+      datasets:[{data:[m.shared_total,m.attributable_total],backgroundColor:["#9aa7bf","#2e5496"]}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"55%",
+      plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.label+": "+moneyFull(c.raw)+" ("+pct(c.raw,m.total_spend)+")"}}}}
+  }));
+
+  // table
+  const tb = document.getElementById("techRows");
+  tb.innerHTML = techEntries.map(([name,t])=>`
+    <tr class="clickable" data-t="${name}">
+      <td><b>${name}</b></td>
+      <td><span class="pill">${t.category}</span></td>
+      <td class="num">${money(t.shared)}</td>
+      <td class="num">${money(t.attributable)}</td>
+      <td class="num"><b>${money(t.total)}</b></td>
+      <td class="num">${pct(t.total,m.total_spend)}</td>
+      <td class="num">›</td>
+    </tr>`).join("");
+  tb.querySelectorAll("tr").forEach(r=>r.onclick=()=>go("tech",r.dataset.t));
+}
+
+// ---- LEVEL 2a: Technology → across sectors --------------------------------
+function renderTech(name){
+  const t = D.technologies[name];
+  if(!t){ renderHome(); return; }
+  crumbs([{label:"Enterprise Overview",v:"home"},{label:name}]);
+
+  const bySector = SECTORS.map(s=>({s,v:t.by_sector[s]||0})).sort((a,b)=>b.v-a.v);
+  const projEntries = Object.entries(t.by_project).sort((a,b)=>b[1]-a[1]);
+  const projSector = p => (D.projects[p]?D.projects[p].sector:"Enterprise");
+
+  const v = document.getElementById("view");
+  v.innerHTML = `
+    <button class="back" onclick="go('home')">← Enterprise Overview</button>
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi accent"><div class="l">${name} — Total</div><div class="n">${money(t.total)}</div><div class="d">${t.category}</div></div>
+      <div class="kpi"><div class="l">Shared / Enterprise</div><div class="n">${money(t.shared)}</div><div class="d">${pct(t.shared,t.total)} of this platform</div></div>
+      <div class="kpi"><div class="l">Sector-Attributed</div><div class="n">${money(t.attributable)}</div><div class="d">${pct(t.attributable,t.total)} of this platform</div></div>
+      <div class="kpi"><div class="l">Top Sector</div><div class="n">${bySector[0].s}</div><div class="d">${money(bySector[0].v)} attributed</div></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>${name} Spend Across Sectors</h3>
+        <p class="hint">Sector-attributed consumption. Click a sector bar to open its full view.</p>
+        <div class="chartbox"><canvas id="tsChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Monthly Trend — ${name}</h3>
+        <p class="hint">Total spend on this platform over 12 months.</p>
+        <div class="chartbox"><canvas id="tmChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Projects Driving ${name} Cost</h2><span class="mini">Double-click a project row to open the project view →</span></div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Project</th><th>Sector</th><th class="num">Spend on ${name}</th><th class="num">Share</th><th style="width:220px">&nbsp;</th></tr></thead>
+        <tbody id="projRows"></tbody>
+      </table>
+      <div class="note">“Shared / Enterprise” portion (${money(t.shared)}) is the platform/license base fee and is not tied to a single project.</div>
+    </div>
+  `;
+
+  chartRegistry.push(new Chart(document.getElementById("tsChart"),{
+    type:"bar",
+    data:{labels:bySector.map(x=>x.s),
+      datasets:[{data:bySector.map(x=>x.v),backgroundColor:bySector.map(x=>SECTOR_COLOR[x.s])}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{ticks:{callback:v=>money(v)}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>moneyFull(c.raw)}}},
+      onClick:(e,els)=>{if(els.length)go("sector",bySector[els[0].index].s);}}
+  }));
+
+  chartRegistry.push(new Chart(document.getElementById("tmChart"),{
+    type:"line",
+    data:{labels:MONTHS,datasets:[{label:name,data:t.monthly,
+      borderColor:"#2e5496",backgroundColor:"rgba(46,84,150,.12)",fill:true,tension:.3,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>money(v)}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>moneyFull(c.raw)}}}}
+  }));
+
+  const max = projEntries.length?projEntries[0][1]:1;
+  const tb = document.getElementById("projRows");
+  tb.innerHTML = projEntries.map(([p,val])=>{
+    const sec = projSector(p);
+    const isProject = !!D.projects[p];
+    return `<tr class="${isProject?'clickable':''}" data-p="${isProject?p:''}">
+      <td><b>${p}</b></td>
+      <td><span class="tag ${sectorTagClass(sec)}">${sec}</span></td>
+      <td class="num">${money(val)}</td>
+      <td class="num">${pct(val,t.attributable)}</td>
+      <td><div class="bar" style="width:${Math.max(4,100*val/max)}%;background:${SECTOR_COLOR[sec]||'#9aa7bf'}"></div></td>
+    </tr>`;
+  }).join("");
+  tb.querySelectorAll("tr.clickable").forEach(r=>{
+    r.ondblclick=()=>go("project",r.dataset.p);
+    r.onclick=()=>go("project",r.dataset.p); // single click also works for demo convenience
+  });
+}
+
+// ---- LEVEL 2b: Sector view ------------------------------------------------
+function renderSector(name){
+  const s = D.sectors[name];
+  if(!s){ renderHome(); return; }
+  crumbs([{label:"Enterprise Overview",v:"home"},{label:name+" Sector"}]);
+
+  const techEntries = Object.entries(s.by_tech).sort((a,b)=>b[1]-a[1]);
+  const projEntries = Object.entries(s.by_project).sort((a,b)=>b[1]-a[1]);
+
+  const v = document.getElementById("view");
+  v.innerHTML = `
+    <button class="back" onclick="go('home')">← Enterprise Overview</button>
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi accent"><div class="l">${name} — Fully Loaded</div><div class="n">${money(s.fully_loaded)}</div><div class="d">${pct(s.fully_loaded,D.meta.total_spend)} of enterprise spend</div></div>
+      <div class="kpi"><div class="l">Direct Consumption</div><div class="n">${money(s.direct)}</div><div class="d">Attributed to this sector</div></div>
+      <div class="kpi"><div class="l">Allocated Shared</div><div class="n">${money(s.allocated_shared)}</div><div class="d">Share of enterprise/licenses pool</div></div>
+      <div class="kpi"><div class="l">Top Platform</div><div class="n" style="font-size:18px">${techEntries[0]?techEntries[0][0]:'-'}</div><div class="d">${techEntries[0]?money(techEntries[0][1]):''}</div></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>${name}: Spend by Technology</h3>
+        <p class="hint">Direct (attributed) consumption by platform. Click a bar to open that technology.</p>
+        <div class="chartbox tall"><canvas id="stChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>${name}: Spend by Project</h3>
+        <p class="hint">Projects driving this sector's spend. Click to drill in.</p>
+        <div class="chartbox tall"><canvas id="spChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Projects in ${name}</h2><span class="mini">Click a project to drill down →</span></div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Project</th><th class="num">Total Spend</th><th class="num">Share of Sector</th><th>Top Platform</th><th></th></tr></thead>
+        <tbody id="spRows"></tbody>
+      </table>
+    </div>
+  `;
+
+  chartRegistry.push(new Chart(document.getElementById("stChart"),{
+    type:"bar",
+    data:{labels:techEntries.map(e=>e[0]),datasets:[{data:techEntries.map(e=>e[1]),
+      backgroundColor:techEntries.map((_,i)=>PALETTE[i%PALETTE.length])}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      scales:{x:{ticks:{callback:v=>money(v)}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>moneyFull(c.raw)}}},
+      onClick:(e,els)=>{if(els.length)go("tech",techEntries[els[0].index][0]);}}
+  }));
+
+  chartRegistry.push(new Chart(document.getElementById("spChart"),{
+    type:"doughnut",
+    data:{labels:projEntries.map(e=>e[0]),datasets:[{data:projEntries.map(e=>e[1]),
+      backgroundColor:projEntries.map((_,i)=>PALETTE[i%PALETTE.length])}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"50%",
+      plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>c.label+": "+moneyFull(c.raw)}}},
+      onClick:(e,els)=>{if(els.length){const p=projEntries[els[0].index][0]; if(D.projects[p])go("project",p);}}}
+  }));
+
+  const tb = document.getElementById("spRows");
+  tb.innerHTML = projEntries.map(([p,val])=>{
+    const isProject = !!D.projects[p];
+    const top = isProject ? Object.keys(D.projects[p].by_tech)[0] : "—";
+    return `<tr class="${isProject?'clickable':''}" data-p="${isProject?p:''}">
+      <td><b>${p}</b></td>
+      <td class="num">${money(val)}</td>
+      <td class="num">${pct(val,s.direct)}</td>
+      <td>${top}</td>
+      <td class="num">${isProject?'›':''}</td>
+    </tr>`;
+  }).join("");
+  tb.querySelectorAll("tr.clickable").forEach(r=>r.onclick=()=>go("project",r.dataset.p));
+}
+
+// ---- LEVEL 3: Project view ------------------------------------------------
+function renderProject(name){
+  const p = D.projects[name];
+  if(!p){ renderHome(); return; }
+  crumbs([{label:"Enterprise Overview",v:"home"},
+          {label:p.sector+" Sector",v:"sector",a:p.sector},
+          {label:name}]);
+
+  const techEntries = Object.entries(p.by_tech).sort((a,b)=>b[1]-a[1]);
+  const topShare = techEntries.length?pct(techEntries[0][1],p.total):"";
+
+  const v = document.getElementById("view");
+  v.innerHTML = `
+    <button class="back" onclick="go('sector','${p.sector}')">← ${p.sector} Sector</button>
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi accent"><div class="l">${name} — Total Spend</div><div class="n">${money(p.total)}</div><div class="d"><span class="tag ${sectorTagClass(p.sector)}">${p.sector}</span></div></div>
+      <div class="kpi"><div class="l">Platforms Used</div><div class="n">${techEntries.length}</div><div class="d">Technology line items</div></div>
+      <div class="kpi"><div class="l">Largest Platform Cost</div><div class="n" style="font-size:18px">${techEntries[0]?techEntries[0][0]:'-'}</div><div class="d">${techEntries[0]?money(techEntries[0][1])+' · '+topShare:''}</div></div>
+      <div class="kpi"><div class="l">% of ${p.sector}</div><div class="n">${pct(p.total,D.sectors[p.sector].direct)}</div><div class="d">of sector direct spend</div></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>${name}: Cost by Technology</h3>
+        <p class="hint">Which platforms drive this project's cost. Click a bar to open that technology's enterprise view.</p>
+        <div class="chartbox tall"><canvas id="ptChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>${name}: Monthly Trend</h3>
+        <p class="hint">Project spend over 12 months.</p>
+        <div class="chartbox"><canvas id="pmChart"></canvas></div>
+        <h3 style="margin-top:14px">Platform Breakdown</h3>
+        <table style="margin-top:6px"><tbody id="ptRows"></tbody></table>
+      </div>
+    </div>
+  `;
+
+  chartRegistry.push(new Chart(document.getElementById("ptChart"),{
+    type:"bar",
+    data:{labels:techEntries.map(e=>e[0]),datasets:[{data:techEntries.map(e=>e[1]),
+      backgroundColor:techEntries.map((_,i)=>PALETTE[i%PALETTE.length])}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      scales:{x:{ticks:{callback:v=>money(v)}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>moneyFull(c.raw)}}},
+      onClick:(e,els)=>{if(els.length)go("tech",techEntries[els[0].index][0]);}}
+  }));
+
+  chartRegistry.push(new Chart(document.getElementById("pmChart"),{
+    type:"line",
+    data:{labels:MONTHS,datasets:[{label:name,data:p.monthly,
+      borderColor:SECTOR_COLOR[p.sector]||"#2e5496",backgroundColor:"rgba(46,84,150,.12)",fill:true,tension:.3,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>money(v)}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>moneyFull(c.raw)}}}}
+  }));
+
+  document.getElementById("ptRows").innerHTML = techEntries.map(([t,val])=>`
+    <tr><td><b>${t}</b></td><td class="num">${money(val)}</td><td class="num">${pct(val,p.total)}</td></tr>`).join("");
+}
+
+// init
+routeFromHash();
+</script>
+</body>
+</html>

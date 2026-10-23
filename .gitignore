@@ -1,0 +1,7 @@
+# Local Python deps (installed into sandbox workspace)
+.pylibs/
+__pycache__/
+*.pyc
+
+# OS cruft
+.DS_Store
